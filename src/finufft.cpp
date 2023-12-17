@@ -955,7 +955,7 @@ int FINUFFT_SETPTS(FINUFFT_PLAN p, BIGINT nj, FLT* xj, FLT* yj, FLT* zj,
 
 
 // EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-int FINUFFT_EXECUTE(FINUFFT_PLAN p, CPX* cj, CPX* fk){
+int FINUFFT_EXECUTE(FINUFFT_PLAN p, CPX* cj, CPX* fk, uint8_t step){
 /* See ../docs/cguru.doc for current documentation.
 
    For given (stack of) weights cj or coefficients fk, performs NUFFTs with
@@ -986,30 +986,36 @@ int FINUFFT_EXECUTE(FINUFFT_PLAN p, CPX* cj, CPX* fk){
       if (p->opts.debug>1) printf("[%s] start batch %d (size %d):\n",__func__, b,thisBatchSize);
       
       // STEP 1: (varies by type)
-      timer.restart();
-      if (p->type == 1) {  // type 1: spread NU pts p->X, weights cj, to fw grid
-        spreadinterpSortedBatch(thisBatchSize, p, cjb);
-        t_sprint += timer.elapsedsec();
-      } else {          //  type 2: amplify Fourier coeffs fk into 0-padded fw
-        deconvolveBatch(thisBatchSize, p, fkb);
-        t_deconv += timer.elapsedsec();
+      if (step & 1) {
+        timer.restart();
+        if (p->type == 1) {  // type 1: spread NU pts p->X, weights cj, to fw grid
+          spreadinterpSortedBatch(thisBatchSize, p, cjb);
+          t_sprint += timer.elapsedsec();
+        } else {          //  type 2: amplify Fourier coeffs fk into 0-padded fw
+          deconvolveBatch(thisBatchSize, p, fkb);
+          t_deconv += timer.elapsedsec();
+        }
       }
              
       // STEP 2: call the pre-planned FFT on this batch
-      timer.restart();
-      FFTW_EX(p->fftwPlan);   // if thisBatchSize<batchSize it wastes some flops
-      t_fft += timer.elapsedsec();
-      if (p->opts.debug>1)
-        printf("\tFFTW exec:\t\t%.3g s\n", timer.elapsedsec());
+      if (step & 2) {
+        timer.restart();
+        FFTW_EX(p->fftwPlan);   // if thisBatchSize<batchSize it wastes some flops
+        t_fft += timer.elapsedsec();
+        if (p->opts.debug>1)
+          printf("\tFFTW exec:\t\t%.3g s\n", timer.elapsedsec());
+      }
       
       // STEP 3: (varies by type)
-      timer.restart();        
-      if (p->type == 1) {   // type 1: deconvolve (amplify) fw and shuffle to fk
-        deconvolveBatch(thisBatchSize, p, fkb);
-        t_deconv += timer.elapsedsec();
-      } else {          // type 2: interpolate unif fw grid to NU target pts
-        spreadinterpSortedBatch(thisBatchSize, p, cjb);
-        t_sprint += timer.elapsedsec(); 
+      if (step & 4) {
+        timer.restart();        
+        if (p->type == 1) {   // type 1: deconvolve (amplify) fw and shuffle to fk
+          deconvolveBatch(thisBatchSize, p, fkb);
+          t_deconv += timer.elapsedsec();
+        } else {          // type 2: interpolate unif fw grid to NU target pts
+          spreadinterpSortedBatch(thisBatchSize, p, cjb);
+          t_sprint += timer.elapsedsec(); 
+        }
       }
     }                                                   // ........end b loop
     
@@ -1067,7 +1073,7 @@ int FINUFFT_EXECUTE(FINUFFT_PLAN p, CPX* cj, CPX* fk){
       p->innerT2plan->ntrans = thisBatchSize;      // do not try this at home!
       /* (alarming that FFTW not shrunk, but safe, because t2's fwBatch array
          still the same size, as Andrea explained; just wastes a few flops) */
-      FINUFFT_EXECUTE(p->innerT2plan, fkb, (CPX*)(p->fwBatch));
+      FINUFFT_EXECUTE(p->innerT2plan, fkb, (CPX*)(p->fwBatch), 0b111);
       t_t2 += timer.elapsedsec();
 
       // STEP 3: apply deconvolve (precomputed 1/phiHat(targ_k), phasing too)...
@@ -1121,3 +1127,17 @@ int FINUFFT_DESTROY(FINUFFT_PLAN p)
   delete p;
   return 0;              // success
 }
+
+void* FINUFFT_GET_FWBATCH(FINUFFT_PLAN p)
+{
+  return (void *)p->fwBatch;
+}
+
+void FINUFFT_GET_NF(FINUFFT_PLAN p, int64_t *nf)
+{
+	nf[0] = p->nf1;
+	nf[1] = p->nf2;
+	nf[2] = p->nf3;
+	return;
+}
+

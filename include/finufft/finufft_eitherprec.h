@@ -58,8 +58,10 @@ typedef struct FINUFFT_PLAN_S * FINUFFT_PLAN;
   void FINUFFTIFY(_default_opts)(finufft_opts *o);
   int FINUFFTIFY(_makeplan)(int type, int dim, FINUFFT_BIGINT* n_modes, int iflag, int n_transf, FINUFFT_FLT tol, FINUFFT_PLAN* plan, finufft_opts* o);
   int FINUFFTIFY(_setpts)(FINUFFT_PLAN plan , FINUFFT_BIGINT M, FINUFFT_FLT *xj, FINUFFT_FLT *yj, FINUFFT_FLT *zj, FINUFFT_BIGINT N, FINUFFT_FLT *s, FINUFFT_FLT *t, FINUFFT_FLT *u); 
-  int FINUFFTIFY(_execute)(FINUFFT_PLAN plan, FINUFFT_CPX* weights, FINUFFT_CPX* result);
+  int FINUFFTIFY(_execute)(FINUFFT_PLAN plan, FINUFFT_CPX* weights, FINUFFT_CPX* result, uint8_t step);
   int FINUFFTIFY(_destroy)(FINUFFT_PLAN plan);
+  void* FINUFFTIFY(_get_fwbatch)(FINUFFT_PLAN plan);
+  void FINUFFTIFY(_get_nf)(FINUFFT_PLAN plan, int64_t* nf);
 
 
 // ----------------- the 18 simple interfaces -------------------------------

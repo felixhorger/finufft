@@ -76,12 +76,12 @@ void FINUFFT_SETPTS_(FINUFFT_PLAN *plan, BIGINT *M, FLT *xj, FLT *yj, FLT *zj, B
   *ier = FINUFFT_SETPTS(*plan, *M, xj, yj, zj, nk_safe, s, t, u);
 }
 
-void FINUFFT_EXECUTE_(FINUFFT_PLAN *plan, CPX *weights, CPX *result, int *ier)
+void FINUFFT_EXECUTE_(FINUFFT_PLAN *plan, CPX *weights, CPX *result, int *ier, char step)
 {
   if (!plan)
     fprintf(stderr,"%s fortran: finufft_plan unallocated!",__func__);
   else
-    *ier = FINUFFT_EXECUTE(*plan, weights, result);
+    *ier = FINUFFT_EXECUTE(*plan, weights, result, step);
 }
 
 void FINUFFT_DESTROY_(FINUFFT_PLAN *plan, int *ier)

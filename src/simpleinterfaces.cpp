@@ -45,7 +45,7 @@ int invokeGuruInterface(int n_dims, int type, int n_transf, BIGINT nj, FLT* xj,
     return ier2;
   }
 
-  int ier3 = FINUFFT_EXECUTE(plan, cj, fk);
+  int ier3 = FINUFFT_EXECUTE(plan, cj, fk, 7);
   if (ier3>1) {
     fprintf(stderr,"FINUFFT invokeGuru: execute error (ier=%d)!\n", ier3);
     return ier3;
